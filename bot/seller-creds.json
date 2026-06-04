@@ -1,0 +1,19 @@
+{
+  "_comment": "Per-seller-handle login credentials used by arrange-pickup.sh when an order belongs to that seller. Each seller portal only authorizes its own member's orders via the Mercur vendor API (GET/PATCH /vendor/orders/{id}/...). Plaintext on disk — chmod 600. Add new entries as more sellers are needed.",
+  "adidas-ph": {
+    "email": "bianca.velez100697@gmail.com",
+    "password": "Qweqwe123!"
+  },
+  "adidas-official": {
+    "email": "bianca.velez100697@gmail.com",
+    "password": "Qweqwe123!"
+  },
+  "nestle-ph": {
+    "email": "marjorieparrel@gmail.com",
+    "password": "nestle_2026"
+  },
+  "world-balance": {
+    "email": "sherylle.clickplay@gmail.com",
+    "password": "123123Aa!"
+  }
+}

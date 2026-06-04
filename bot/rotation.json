@@ -1,0 +1,506 @@
+{
+  "_comment": "Bot-side rotation state. The helper script (populate.sh) doesn't read this \u2014 the bot (Claude session handling Telegram DMs) reads and updates it before each populate that needs a PRODUCT_IDS pin. 'next_index' points to the product to use on the next call; advance modulo products.length after each use, regardless of success.",
+  "stage:adidas-official": {
+    "products": [
+      "prod_01KNK1NZCK3PSVKF9E85TRPHTX",
+      "prod_01KNVCFJS4C6SPG2AH8RDRRJB6",
+      "prod_01KQVJM8HTDYGEWAF3QCV90DXR",
+      "prod_01KQ8TM1CRA2TA66JZGQW7Q642"
+    ],
+    "product_titles": {
+      "prod_01KNK1NZCK3PSVKF9E85TRPHTX": "Adidas Essentials Linear Backpack",
+      "prod_01KNVCFJS4C6SPG2AH8RDRRJB6": "Adidas Socks 3pairs for Kids and Adult",
+      "prod_01KQVJM8HTDYGEWAF3QCV90DXR": "Adidas Adilette Pink for Women",
+      "prod_01KQ8TM1CRA2TA66JZGQW7Q642": "Adidas VL Court Base Shoes"
+    },
+    "next_index": 0,
+    "history": [
+      {
+        "order_id": "order_01KRDG4D4BR805G4HJJCQZ4ZQB",
+        "display_id": 1593,
+        "product_id": "prod_01KNK1NZCK3PSVKF9E85TRPHTX",
+        "status": "unpaid",
+        "ts": "2026-05-12T07:06"
+      },
+      {
+        "order_id": "order_01KRDG4VFTJFHBQ38J702PG8RZ",
+        "display_id": 1594,
+        "product_id": "prod_01KNVCFJS4C6SPG2AH8RDRRJB6",
+        "status": "to_ship",
+        "ts": "2026-05-12T07:06"
+      },
+      {
+        "order_id": "order_01KRDG5B30Y8F91MTWP7HQAR77",
+        "display_id": 1595,
+        "product_id": "prod_01KQVJM8HTDYGEWAF3QCV90DXR",
+        "status": "shipping",
+        "ts": "2026-05-12T07:07",
+        "outcome": "fulfillment_failed_rolled_back_to_canceled"
+      },
+      {
+        "order_id": "order_01KRDG5RS1JCRH7KWXW7A0G3C9",
+        "display_id": 1596,
+        "product_id": "prod_01KQ8TM1CRA2TA66JZGQW7Q642",
+        "status": "completed",
+        "ts": "2026-05-12T07:07",
+        "outcome": "fulfillment_failed_rolled_back_to_canceled"
+      },
+      {
+        "order_id": "order_01KRDG66X4GDAD15VFENJABKM7",
+        "display_id": 1597,
+        "product_id": "prod_01KNK1NZCK3PSVKF9E85TRPHTX",
+        "status": "canceled",
+        "ts": "2026-05-12T07:07"
+      },
+      {
+        "order_id": "order_01KRDMEPDH63X5P43NEVA7X7BK",
+        "product_id": "prod_01KNVCFJS4C6SPG2AH8RDRRJB6",
+        "status": "unpaid",
+        "ts": "2026-05-12T08:31"
+      },
+      {
+        "order_id": "order_01KRDMFA4T2HT6EA6XMRRCTF08",
+        "product_id": "prod_01KQVJM8HTDYGEWAF3QCV90DXR",
+        "status": "to_ship",
+        "ts": "2026-05-12T08:31"
+      },
+      {
+        "order_id": "order_01KRDMFW35NA3BGS60037E6Q1N",
+        "product_id": "prod_01KQ8TM1CRA2TA66JZGQW7Q642",
+        "status": "to_ship",
+        "ts": "2026-05-12T08:31",
+        "intent": "manual_arrange_then_stop_at_shipping"
+      },
+      {
+        "order_id": "order_01KRDMG9M8CTVX5XWVW92RFYG4",
+        "product_id": "prod_01KNK1NZCK3PSVKF9E85TRPHTX",
+        "status": "to_ship",
+        "ts": "2026-05-12T08:31",
+        "intent": "manual_arrange_then_advance_to_completed"
+      },
+      {
+        "order_id": "order_01KRDMGR640JT0QKPT2KHST7Z7",
+        "product_id": "prod_01KNVCFJS4C6SPG2AH8RDRRJB6",
+        "status": "canceled",
+        "ts": "2026-05-12T08:32"
+      }
+    ]
+  },
+  "prod:world-balance": {
+    "products": [
+      "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+      "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T"
+    ],
+    "product_titles": {
+      "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ": "World Balance COAST SLIDER Women's Sliders",
+      "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T": "World Balance Staple Slides L Women's Sliders"
+    },
+    "next_index": 1,
+    "history": [
+      {
+        "order_id": "order_01KRZG8Z3HZCCMW74VE75XPDH7",
+        "product_id": "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+        "status": "to_ship",
+        "ts": "2026-05-19T06:55",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      },
+      {
+        "order_id": "order_01KRZFMEE5DJE0C2K0T334159V",
+        "product_id": "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T",
+        "status": "to_ship",
+        "ts": "2026-05-19T06:40",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      },
+      {
+        "order_id": "order_01KRZ0ZGWB18FCRDHFVD56CSDE",
+        "product_id": "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+        "status": "unpaid",
+        "ts": "2026-05-19T02:23",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      },
+      {
+        "order_id": "order_01KRYY0BYYYEVZATE17SXBSG9G",
+        "product_id": "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+        "status": "unpaid",
+        "ts": "2026-05-19T01:35",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com",
+        "notes": "after soft-deleting broken J&T option so_01KPADACBAJ82FDQSFPFPP2BBW (pointed at Adidas PH zone)"
+      },
+      {
+        "order_id": "order_01KRYY1CHYRZMXAD4JKXC7BGPX",
+        "product_id": "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T",
+        "status": "to_ship",
+        "ts": "2026-05-19T01:35",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      },
+      {
+        "order_id": "order_01KRYY1PFP9AQKWDMAJ5DZS9QY",
+        "product_id": "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+        "status": "canceled",
+        "ts": "2026-05-19T01:35",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      },
+      {
+        "order_id": "order_01KRYY43022TE5KVXQKJ8T6XXJ",
+        "product_id": "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T",
+        "status": "shipping",
+        "ts": "2026-05-19T01:39",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com",
+        "notes": "JT54686919G3PS"
+      },
+      {
+        "order_id": "order_01KRYY4QDYG6RVGQK9Q06133KP",
+        "product_id": "prod_01KPAMB3EEWRFR1J2PG1VE63ZJ",
+        "status": "delivered",
+        "ts": "2026-05-19T01:39",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com",
+        "notes": "JT5470761795CA"
+      },
+      {
+        "order_id": "order_01KRYY5JHDJWMBG8WRTJHMG7YM",
+        "product_id": "prod_01KPCGNZXZ87JDHZ0MJ1G3BR7T",
+        "status": "completed",
+        "ts": "2026-05-19T01:40",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com",
+        "notes": "JT547354779BFH"
+      }
+    ]
+  },
+  "prod:nestle-ph": {
+    "products": [
+      "prod_01KKWX422BHFD2W93G3EH8S1WE",
+      "prod_01KKWXB6FS19QXVN1CXHJE54PA",
+      "prod_01KKWXE0B9G4KZ3786A7QPNK68",
+      "prod_01KKWXHK9CF0RCMXW3NFAJQP4E",
+      "prod_01KKJYDQ146JFF99BT3XF35F51"
+    ],
+    "product_titles": {
+      "prod_01KKWX422BHFD2W93G3EH8S1WE": "MILO Chocolate Malt Powder Drink 1kg",
+      "prod_01KKWXB6FS19QXVN1CXHJE54PA": "MILO Nutri-Up Adult Chocolate Drink",
+      "prod_01KKWXE0B9G4KZ3786A7QPNK68": "MILO Active-Go Chocolate Malt Powder",
+      "prod_01KKWXHK9CF0RCMXW3NFAJQP4E": "MILO Ready-to-Drink Choco Malt Milk",
+      "prod_01KKJYDQ146JFF99BT3XF35F51": "nescaf\u00e9 original 3-in-1 coffee mix"
+    },
+    "next_index": 2,
+    "history": [
+      {
+        "order_id": "order_01KS25R4121FQB3FM01M2NXTHW..order_01KS25R7TVVCCD6VE7P9JHQ7KD",
+        "product_id": "prod_01KKWXB6FS19QXVN1CXHJE54PA",
+        "status": "canceled",
+        "count": 5,
+        "ts": "2026-05-20T07:48",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "kbandicoot8@gmail.com"
+      },
+      {
+        "order_id": "30-order batch (5 per status): see Telegram message 250",
+        "buyer_email": "john.shopping@gmail.com",
+        "count": 30,
+        "ts": "2026-05-20T06:52",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "notes": "5x unpaid(MILO 1kg), 5x to_ship(Nutri-Up), 5x canceled(Active-Go), 5x shipping(Ready-to-Drink), 5x delivered(nescaf\u00e9), 5x completed(MILO 1kg). 15 real JT bookings."
+      },
+      {
+        "order_id": "order_01KS1NTP8VMTQSQK4EWM55TZ2Y..order_01KS1NTYDBVPNW2082VP286J24",
+        "product_id": "prod_01KKWXB6FS19QXVN1CXHJE54PA",
+        "status": "to_ship",
+        "count": 10,
+        "ts": "2026-05-20T03:10",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "meparrel@gmail.com"
+      },
+      {
+        "order_id": "order_01KS1NNSDSYHFDB7D37TSQHRVP..order_01KS1NPM7CHXQJEPZJHFEP5NQ6",
+        "product_id": "prod_01KKJYDQ146JFF99BT3XF35F51",
+        "status": "to_ship",
+        "count": 30,
+        "ts": "2026-05-20T03:07",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "meparrel@gmail.com",
+        "notes": "Standard Delivery (J&T masked channel) after soft-deletes"
+      },
+      {
+        "order_id": "order_01KS1NPJDGSBTWBDTDBN5H13HH..order_01KS1NQV02BK67W7W0RJ2560BG",
+        "product_id": "prod_01KKWX422BHFD2W93G3EH8S1WE",
+        "status": "to_ship",
+        "count": 50,
+        "ts": "2026-05-20T03:08",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "kbandicoot8@gmail.com",
+        "notes": "Standard Delivery (J&T masked channel) after soft-deletes"
+      },
+      {
+        "order_id": "order_01KS1NCWG8B3XH0H7PQHK2ZPHQ",
+        "product_id": "prod_01KKWXHK9CF0RCMXW3NFAJQP4E",
+        "status": "to_ship",
+        "ts": "2026-05-20T03:02",
+        "requested_by": "terminal:verify_shipping_fallthrough",
+        "buyer_email": "meparrel@gmail.com",
+        "notes": "first order after soft-deleting Nestle-own option + broken J&T Express; uses Standard Delivery (J&T masked channel)"
+      },
+      {
+        "order_id": "order_01KS1JPTWTB6JG418QVDCWNVJ7..order_01KS1JPYMZ89NYP7QW3T8KA606",
+        "product_id": "prod_01KKWXE0B9G4KZ3786A7QPNK68",
+        "status": "to_ship",
+        "count": 5,
+        "ts": "2026-05-20T02:16",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "meparrel@gmail.com"
+      },
+      {
+        "order_id": "order_01KS1HWJBVTD0CK691QTSN41SB..order_01KS1HXT8X4SWDXA08VTCQDVXN",
+        "product_id": "prod_01KKWXB6FS19QXVN1CXHJE54PA",
+        "status": "to_ship",
+        "count": 50,
+        "ts": "2026-05-20T02:01",
+        "requested_by": "telegram:marjparrel(680530483)",
+        "buyer_email": "kbandicoot8@gmail.com",
+        "notes": "batch of 50; first..last id range"
+      },
+      {
+        "order_id": "order_01KRZGKD1E282EDTXQ4SC40ZHG",
+        "product_id": "prod_01KKWX422BHFD2W93G3EH8S1WE",
+        "status": "to_ship",
+        "ts": "2026-05-19T07:00",
+        "requested_by": "telegram:Sheeey(873623043)",
+        "buyer_email": "sherylle.clickplay@gmail.com"
+      }
+    ]
+  },
+  "prod:adidas-ph": {
+    "products": [
+      "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+      "prod_01KMHYM41RY928NCA9GNGNB3TS",
+      "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+      "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC"
+    ],
+    "product_titles": {
+      "prod_01KPCFA9CA0ZHYRY5NF339SNZW": "Adidas Bagpack Black and White",
+      "prod_01KMHYM41RY928NCA9GNGNB3TS": "Adizero Boston 13",
+      "prod_01KR008W801GYXZJ3A4EP5Z3ZA": "Adidas Socks for Adult and Kids",
+      "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC": "Adidas Samba OG Shoes"
+    },
+    "next_index": 1,
+    "history": [
+      {
+        "order_id": "order_01KS4YD3QEQ22D789WMM0Z29Z5..order_01KS4YFNR2MBM560Q8E1DT7Y9B",
+        "buyer_email": "arvin.clickplay@gmail.com",
+        "status": "completed",
+        "count": 5,
+        "ts": "2026-05-21T09:37",
+        "requested_by": "telegram:threem06(749922520)",
+        "notes": "Bagpack/Boston alternating, 5 real JT bookings (JT56309228Z9JN..JT5639302779JX)"
+      },
+      {
+        "order_id": "order_01KS4TX3WS2DA4PJAJ511Q87KV",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "to_ship",
+        "ts": "2026-05-21T08:02",
+        "requested_by": "terminal:smoke_test",
+        "buyer_email": "arvindacio@yahoo.com",
+        "notes": "prod back after test-file pickup was fixed"
+      },
+      {
+        "order_id": "order_01KS20HX706FDB46DGP0A5FVPK",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "canceled",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS20CPB1PBE3D9QTH20JR13C",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "completed",
+        "notes": "JT57729238VG72",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS20C3ZMYW6W7VA62MJSCP67",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "delivered",
+        "notes": "JT57710555TMIY",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS20HHCPQVQ9H010W1YJK2KV",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "shipping",
+        "notes": "JT57887988LATW",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS20H79RTGSDPCWT3KPKQAS4",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "to_ship",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS20B7PMSN54Z1HMK9YZFQ09",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "unpaid",
+        "ts": "2026-05-20T06:14",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KS1EAM65J1SVHXYFRVKPF9PH",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "to_ship",
+        "ts": "2026-05-20T00:56",
+        "requested_by": "terminal:smoke_test",
+        "buyer_email": "arvindacio@yahoo.com"
+      },
+      {
+        "order_id": "order_01KRDC8Z3ZQHDMEWZ18F37G41E",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "unpaid",
+        "ts": "2026-05-12T05:59"
+      },
+      {
+        "order_id": "order_01KRDCM3H7G3PE15RPZWM2B3N2",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "to_ship",
+        "ts": "2026-05-12T06:01"
+      },
+      {
+        "order_id": "order_01KRDEZQP0ZXBKJ4MDFDMEQZJG",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "unpaid",
+        "ts": "2026-05-12T06:46"
+      },
+      {
+        "order_id": "order_01KRDF06ZJXX095Q35Q7KYR5AK",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "to_ship",
+        "ts": "2026-05-12T06:47"
+      },
+      {
+        "order_id": "order_01KRDF29RKESC0Z3XZZCVHB4B7",
+        "product_id": "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC",
+        "status": "shipping",
+        "ts": "2026-05-12T06:47",
+        "outcome": "fulfillment_failed_rolled_back_to_canceled"
+      },
+      {
+        "order_id": "order_01KRDF3JMDSJCKKJVKMYTKHYSM",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "canceled",
+        "ts": "2026-05-12T06:48"
+      },
+      {
+        "order_id": "order_01KRFBVJN6657SC9XHVA19X2VX",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "completed",
+        "ts": "2026-05-13T00:30",
+        "notes": "full auto: populate.sh \u2192 JT arrange-pickup (waybill JT32225549RYTM) \u2192 advance.sh"
+      },
+      {
+        "order_id": "order_01KRFD1JKBHXHNE020T559JH02",
+        "product_id": "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC",
+        "status": "completed",
+        "ts": "2026-05-13T01:00",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "full chain: to_ship \u2192 JT pickup JT34108108YHAB \u2192 completed"
+      },
+      {
+        "order_id": "order_01KRFDVAGPH6HHXB10NZS7AWSQ",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "to_ship",
+        "ts": "2026-05-13T01:05",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com"
+      },
+      {
+        "order_id": "order_01KRFDXKN4RVVCE3SVS69QS378",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "shipping",
+        "ts": "2026-05-13T01:06",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "to_ship \u2192 JT pickup JT34389494OHEP"
+      },
+      {
+        "order_id": "order_01KRFE5130Q92DKY4Y25YKB0ZK",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "to_ship",
+        "ts": "2026-05-13T01:11",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "ORPHAN: created accidentally due to shell-cmd-substitution bug; should be ignored/canceled"
+      },
+      {
+        "order_id": "order_01KRFE5APFTQE3RKS1RZE0J5F7",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "completed",
+        "ts": "2026-05-13T01:11",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 57: to_ship \u2192 JT JT34633661RYF0 \u2192 completed"
+      },
+      {
+        "order_id": "order_01KRFE6YZM3M0FF04JZE0Y593A",
+        "product_id": "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC",
+        "status": "unpaid",
+        "ts": "2026-05-13T01:12",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 58 1/5"
+      },
+      {
+        "order_id": "order_01KRFE7H9ZVR3VGRG3JM9TX5J2",
+        "product_id": "prod_01KPCFA9CA0ZHYRY5NF339SNZW",
+        "status": "to_ship",
+        "ts": "2026-05-13T01:12",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 58 2/5"
+      },
+      {
+        "order_id": "order_01KRFE89068S54SB36WS25CD3A",
+        "product_id": "prod_01KMHYM41RY928NCA9GNGNB3TS",
+        "status": "shipping",
+        "ts": "2026-05-13T01:12",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 58 3/5; JT347369710O9Q"
+      },
+      {
+        "order_id": "order_01KRFE9268TX74GP9FVDN3GK29",
+        "product_id": "prod_01KR008W801GYXZJ3A4EP5Z3ZA",
+        "status": "completed",
+        "ts": "2026-05-13T01:13",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 58 4/5; JT34761396W9YA"
+      },
+      {
+        "order_id": "order_01KRFEA5Y70JN87TSPPQMMWQT8",
+        "product_id": "prod_01KKJNA90Y0Y7NG4GSDPZ5F3AC",
+        "status": "canceled",
+        "ts": "2026-05-13T01:13",
+        "requested_by": "telegram:yangcavelez(691605474)",
+        "buyer_email": "yangca.velez@gmail.com",
+        "notes": "msg 58 5/5"
+      }
+    ]
+  }
+}

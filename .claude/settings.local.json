@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/daydream/.claude/plugins/cache/claude-plugins-official/telegram/0.0.6/**)",
+      "Read(//Users/daydream/.claude/plugins/cache/claude-plugins-official/telegram/**)",
+      "Read(//Users/daydream/.claude/channels/telegram/**)",
+      "Bash(/usr/bin/python3 *)",
+      "Bash(mkdir -p ~/.claude/channels/telegram/approved)",
+      "Bash(printf '788979769')",
+      "Bash(/usr/bin/ssh *)",
+      "mcp__plugin_telegram_telegram__reply",
+      "Bash(ps -p 21496 -o command=)"
+    ]
+  }
+}
