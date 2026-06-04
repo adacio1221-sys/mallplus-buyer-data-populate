@@ -1,6 +1,7 @@
 #!/bin/bash
 # advance.sh — advance an existing order to a target status via the Medusa
-# admin script-console (orders/update-order-status-qa.js).
+# admin script-console (orders/update-order-status-qa.js — both stage and prod
+# are Dockerized now and serve the compiled .js, not the .ts source).
 #
 # Usage: advance.sh <order_id> <target_status> [env=stage|dev|prod]
 #
@@ -84,7 +85,7 @@ fi
 BODY=$(/usr/bin/python3 -c "
 import json
 print(json.dumps({
-  'script': 'orders/update-order-status-qa.ts',
+  'script': 'orders/update-order-status-qa.js',
   'args': ['ORDER_ID=$ORDER_ID', 'STATUS=$TARGET', 'FORCE=true']
 }))")
 RESULT=$(/usr/bin/curl -s -X POST "$API_BASE/admin/script-console/scripts/run" \
@@ -93,32 +94,26 @@ RESULT=$(/usr/bin/curl -s -X POST "$API_BASE/admin/script-console/scripts/run" \
   -H "x-script-console-password: $SC_PASSWORD" \
   -d "$BODY")
 
-# The endpoint returns the script's stdout/stderr stream as JSON. Parse it
-# and look for the success/failure markers used by update-order-status-qa.js.
+# Trust the script's exitCode as the canonical success signal. The previous
+# heuristic (grep stdout for "UPDATED TO ... SUCCESSFULLY") false-positived
+# whenever a sub-step logged that phrase before the script crashed later
+# — e.g. "PAYMENT UPDATED TO CAPTURED SUCCESSFULLY" still matched even when
+# the fulfillment step subsequently failed with "Inventory level not found".
 SUCCESS=$(echo "$RESULT" | /usr/bin/python3 -c "
 import json, sys, re
 try:
     d = json.load(sys.stdin)
 except json.JSONDecodeError:
     print('error: response was not JSON', file=sys.stderr); sys.exit(1)
-# Try common shapes for stdout/logs.
-buf = ''
-for k in ('output', 'logs', 'stdout', 'result', 'data'):
-    v = d.get(k)
-    if isinstance(v, str): buf += v
-    elif isinstance(v, list): buf += '\n'.join(str(x) for x in v)
-# Some implementations return whole d as the buffer.
-if not buf:
-    buf = json.dumps(d)
-if re.search(r'UPDATED TO [A-Z_]+ SUCCESSFULLY', buf):
-    print('ok')
-else:
-    # Surface failure lines to stderr.
-    import sys as _s
-    fail_lines = [l for l in buf.splitlines() if re.search(r'level\"\\s*:\\s*\"error\"|❌|Error', l)]
-    for l in fail_lines[:5]:
-        print(l, file=_s.stderr)
-    print('fail')
+exit_code = d.get('exitCode')
+if exit_code == 0:
+    print('ok'); sys.exit(0)
+# Surface the actual error lines from stdout so the operator sees what failed.
+buf = d.get('stdout', '') or d.get('output', '') or json.dumps(d)
+fail_lines = [l for l in buf.splitlines() if '❌' in l or 'Error running script' in l]
+for l in fail_lines[:3]:
+    print(l[:300], file=sys.stderr)
+print('fail')
 " 2>&1)
 
 case "$SUCCESS" in

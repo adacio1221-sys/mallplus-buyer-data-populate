@@ -167,36 +167,5 @@ if [[ "$OUTCOME" == ok\|* ]]; then
 fi
 
 REJECT="${OUTCOME#fail|}"
-
-# Auto-retry once if JT rejected the receiver barangay — fix-address
-# will resolve the buyer's saved barangayId and write it into the order's
-# address_2 (the field the JT integration uses as district).
-if [[ "$REJECT" == *"barangay"* ]] || [[ "$REJECT" == *"district"* ]]; then
-  if /Users/daydream/buyer-data-populate/bot/fix-address.sh "$ORDER_ID" "$ENV" >/dev/null 2>&1; then
-    RESULT=$(/usr/bin/curl -s -X POST "$API_BASE/vendor/orders/$ORDER_ID/shipment/pickup" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H 'Content-Type: application/json' \
-      -d "{\"pickup_address_id\":\"$PICKUP_ADDR\",\"pickup_date\":\"$PICKUP_DATE\"}")
-    OUTCOME=$(echo "$RESULT" | /usr/bin/python3 -c "
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except json.JSONDecodeError:
-    print('parse_error|response was not JSON', file=sys.stderr); sys.exit(2)
-if d.get('success') and d.get('waybill_number'):
-    print('ok|' + d['waybill_number'])
-else:
-    msg = d.get('message') or d.get('type') or json.dumps(d)
-    print('fail|' + msg[:400])
-" 2>&1)
-    if [[ "$OUTCOME" == ok\|* ]]; then
-      WAYBILL=${OUTCOME#ok|}
-      echo "$ORDER_ID shipping $WAYBILL"
-      exit 0
-    fi
-    REJECT="${OUTCOME#fail|} (retried after address fix)"
-  fi
-fi
-
 echo "error: arrange-pickup rejected — $REJECT" >&2
 exit 1

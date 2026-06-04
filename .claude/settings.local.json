@@ -9,7 +9,11 @@
       "Bash(printf '788979769')",
       "Bash(/usr/bin/ssh *)",
       "mcp__plugin_telegram_telegram__reply",
-      "Bash(ps -p 21496 -o command=)"
+      "Bash(ps -p 21496 -o command=)",
+      "Bash(/usr/bin/sed -n '1,50p' /tmp/john_100_orders.txt)",
+      "Bash(/usr/bin/sed -n '51,100p' /tmp/john_100_orders.txt)",
+      "Bash(mkdir -p /tmp/john_advance)",
+      "Bash(rm -f /tmp/john_advance/*)"
     ]
   }
 }
