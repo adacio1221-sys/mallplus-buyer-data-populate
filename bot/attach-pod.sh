@@ -1,11 +1,20 @@
 #!/bin/bash
-# attach-pod.sh — attach a proof-of-delivery (photo + recipient name) to an
-# order's fulfillment by firing a synthetic J&T "Delivered" webhook. Goes
-# through the normal /3pl/webhook/jt pipeline (MP-7037), so it persists
-# `proof_of_delivery_url` + `proof_of_delivery_recipient_name` into
-# fulfillment.metadata exactly the way a real JT POD upload would. Does NOT
-# move the order to "completed" — POD lives on fulfillment, status flip is
-# a separate buyer action.
+# attach-pod.sh — attach a proof-of-delivery (photo URL + recipient name) to
+# an order's fulfillment by directly patching `fulfillment.metadata` via the
+# Medusa fulfillment module. Lands in the same place a real JT POD webhook
+# would (per MP-7037: `proof_of_delivery_url` + `proof_of_delivery_recipient_name`
+# on fulfillment.metadata), so the buyer storefront's "Check proof of delivery"
+# sheet picks it up.
+#
+# Does NOT move the order to "completed" — POD lives on fulfillment, the
+# order.status flip is a separate buyer action (rating/confirm).
+#
+# Why direct-write instead of firing the JT webhook: the /3pl/webhook/jt
+# endpoint requires a valid HMAC-SHA256 `x-signature` header signed with
+# the provider secret (encrypted server-side), so a synthetic webhook from
+# outside is rejected with "Missing signature header". Going through the
+# fulfillment module directly gets the same end state on fulfillment.metadata
+# without the signing dance.
 #
 # Usage:
 #   attach-pod.sh <order_id_or_sn> [env=prod] [--url=<photo_url>] [--recipient=<name>]
@@ -14,10 +23,10 @@
 #   url       = https://via.placeholder.com/600x400.jpg?text=QA+POD
 #   recipient = "QA Recipient"
 #
-# Pre-flight: requires an existing JT shipment (i.e. arrange-pickup has run
-# and a waybill exists). Refuses if no `jt_shipment.bill_code` for the order.
+# Pre-flight: requires the order to have a fulfillment row (i.e. it's at
+# shipping/delivered/completed status, not unpaid/to_ship).
 #
-# On success: `<order_id> attach-pod waybill=<bill_code>`.
+# On success: `<order_id> attach-pod url=<url> recipient=<name>`.
 # On failure: prints diagnostic lines to stderr and exits non-zero.
 
 set -euo pipefail
@@ -61,7 +70,6 @@ case "$ENV" in
   *) echo "error: env must be 'stage' | 'dev' | 'prod'" >&2; exit 2 ;;
 esac
 
-# Resolve order_sn → ULID (pass-through for ULIDs).
 RESOLVED=$(/Users/daydream/buyer-data-populate/bot/resolve-order-id.sh "$INPUT" "$ENV" 2>&1) \
   || { echo "$RESOLVED" >&2; exit 1; }
 ORDER_ID=$RESOLVED
@@ -72,82 +80,103 @@ TOKEN=$(/usr/bin/curl -s -X POST "$API_BASE/auth/user/emailpass" \
   | /usr/bin/python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))")
 [ -z "$TOKEN" ] && { echo "error: admin login failed" >&2; exit 1; }
 
-sql_run() {
-  local query=$1
-  local body
-  body=$(/usr/bin/python3 -c "import json,sys; print(json.dumps({'query': sys.argv[1]}))" "$query")
-  /usr/bin/curl -s -X POST "$API_BASE/admin/script-console/sql/run" \
-    -H 'Content-Type: application/json' \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "x-script-console-password: $SC_PASSWORD" \
-    -d "$body"
+# Build TS that merges proof_of_delivery_url + recipient into fulfillment.metadata
+# via the fulfillment module's updateFulfillment(). Mirrors the write path in
+# src/subscribers/3pl-jt/webhook-event-handler.ts so the buyer UI sees the
+# same shape as a real POD upload.
+IFS='' read -r -d '' TS_CODE <<'TSEOF' || true
+import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils'
+
+export default async function main({ container, args }: any) {
+  const parsed = (args || []).reduce((acc: any, kv: string) => {
+    const idx = kv.indexOf('=')
+    if (idx > 0) acc[kv.slice(0, idx)] = kv.slice(idx + 1)
+    return acc
+  }, {})
+  const orderId = parsed.ORDER_ID
+  const podUrl = parsed.POD_URL
+  const recipient = parsed.POD_RECIPIENT
+  if (!orderId || !podUrl || !recipient) {
+    throw new Error('ORDER_ID, POD_URL, POD_RECIPIENT args are required')
+  }
+
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+
+  const { data: links } = await query.graph({
+    entity: 'order_fulfillment',
+    fields: ['fulfillment_id'],
+    filters: { order_id: orderId }
+  } as any)
+  const fulfillmentIds = (links || [])
+    .map((l: any) => l.fulfillment_id)
+    .filter(Boolean)
+  if (fulfillmentIds.length === 0) {
+    throw new Error('No fulfillment found for order ' + orderId + ' — needs to be at least shipping/delivered status first')
+  }
+
+  const fulfillmentModule: any = container.resolve(Modules.FULFILLMENT)
+
+  // Load existing metadata so we merge, not clobber, matching the webhook
+  // handler's pattern.
+  const existing = await fulfillmentModule.retrieveFulfillment(fulfillmentIds[0])
+  const newMetadata = {
+    ...((existing?.metadata as any) || {}),
+    proof_of_delivery_url: podUrl,
+    proof_of_delivery_recipient_name: recipient
+  }
+
+  await fulfillmentModule.updateFulfillment(fulfillmentIds[0], {
+    metadata: newMetadata
+  })
+
+  console.log(JSON.stringify({
+    ok: true,
+    order_id: orderId,
+    fulfillment_id: fulfillmentIds[0],
+    proof_of_delivery_url: podUrl,
+    proof_of_delivery_recipient_name: recipient
+  }))
 }
+TSEOF
 
-# Look up the order's waybill from jt_shipment. Prefer the most recent
-# non-deleted, non-canceled shipment (excludes orphan/retry rows).
-LOOKUP=$(sql_run "SELECT bill_code, fulfillment_id FROM jt_shipment WHERE order_id = '$ORDER_ID' AND deleted_at IS NULL AND bill_code IS NOT NULL ORDER BY created_at DESC LIMIT 1")
-BILL_CODE=$(echo "$LOOKUP" | /usr/bin/python3 -c "
-import json, sys
-try:
-    rows = json.load(sys.stdin).get('rows', [])
-    print(rows[0].get('bill_code', '') if rows else '')
-except Exception:
-    print('')")
-if [ -z "$BILL_CODE" ]; then
-  echo "error: no jt_shipment.bill_code for $ORDER_ID — arrange-pickup must run first to create a JT waybill" >&2
-  exit 1
-fi
-
-# Build a J&T webhook payload. The 3pl webhook endpoint is public (no auth);
-# it stores the raw payload, dedupes via event_id, and the normalizer extracts
-# proof_of_delivery_url from signImg + recipient from signByName.
-NOW_MANILA=$(/usr/bin/python3 -c "
-from datetime import datetime, timezone, timedelta
-print((datetime.now(timezone.utc) + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'))")
-
-PAYLOAD=$(/usr/bin/python3 -c "
-import json, sys
+REQ_BODY=$(/usr/bin/python3 <<PYEOF
+import json
 print(json.dumps({
-  'billCode': sys.argv[1],
-  'status': 'Delivered',
-  'updatedTime': sys.argv[2],
-  'orderId': sys.argv[3],
-  'signImg': sys.argv[4],
-  'signByName': sys.argv[5],
-  'scanCity': 'QA'
-}))" "$BILL_CODE" "$NOW_MANILA" "$ORDER_ID" "$POD_URL" "$POD_RECIPIENT")
+  "code": $(/usr/bin/python3 -c "import json,sys; print(json.dumps(sys.stdin.read()))" <<< "$TS_CODE"),
+  "fileName": "attach-pod",
+  "args": ["ORDER_ID=$ORDER_ID", "POD_URL=$POD_URL", "POD_RECIPIENT=$POD_RECIPIENT"]
+}))
+PYEOF
+)
 
-HTTP=$(/usr/bin/curl -s -o /tmp/attach_pod.out -w '%{http_code}' \
-  -X POST "$API_BASE/3pl/webhook/jt" \
+RESULT=$(/usr/bin/curl -s -X POST "$API_BASE/admin/script-console/typescript/run" \
   -H 'Content-Type: application/json' \
-  -d "$PAYLOAD")
+  -H "Authorization: Bearer $TOKEN" \
+  -H "x-script-console-password: $SC_PASSWORD" \
+  -d "$REQ_BODY")
 
-if [ "$HTTP" != "200" ] && [ "$HTTP" != "201" ] && [ "$HTTP" != "202" ]; then
-  echo "error: webhook POST returned HTTP $HTTP" >&2
-  /usr/bin/head -c 400 /tmp/attach_pod.out >&2
-  echo >&2
-  exit 1
-fi
-
-# Webhook is processed async. Poll fulfillment.metadata briefly for the POD
-# field to confirm propagation — exits as soon as it lands or after timeout.
-DEADLINE=$((SECONDS + 20))
-while [ $SECONDS -lt $DEADLINE ]; do
-  POD_PERSISTED=$(sql_run "SELECT (metadata ->> 'proof_of_delivery_url') AS pod FROM fulfillment WHERE id IN (SELECT fulfillment_id FROM order_fulfillment WHERE order_id = '$ORDER_ID') AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1" \
-    | /usr/bin/python3 -c "
-import json, sys
+OUTCOME=$(echo "$RESULT" | /usr/bin/python3 -c "
+import json, sys, re
 try:
-    rows = json.load(sys.stdin).get('rows', [])
-    print(rows[0].get('pod', '') if rows else '')
-except Exception:
-    print('')")
-  if [ -n "$POD_PERSISTED" ]; then
-    echo "$ORDER_ID attach-pod waybill=$BILL_CODE"
-    exit 0
-  fi
-  /bin/sleep 2
-done
+    d = json.load(sys.stdin)
+except json.JSONDecodeError:
+    print('error: response was not JSON', file=sys.stderr); sys.exit(1)
+exit_code = d.get('exitCode')
+if exit_code == 0:
+    print('ok'); sys.exit(0)
+buf = d.get('stdout', '') or json.dumps(d)
+errs = [l for l in buf.splitlines() if '\"level\":\"error\"' in l or 'Error running' in l or 'No fulfillment' in l]
+for l in errs[-3:]:
+    print(l[:300], file=sys.stderr)
+print('fail')
+" 2>&1)
 
-echo "warning: webhook accepted (HTTP $HTTP) but POD field not visible on fulfillment after 20s — subscriber may be backlogged" >&2
-echo "$ORDER_ID attach-pod waybill=$BILL_CODE pending"
-exit 0
+case "$OUTCOME" in
+  *ok*)
+    echo "$ORDER_ID attach-pod url=$POD_URL recipient=\"$POD_RECIPIENT\""
+    exit 0 ;;
+  *)
+    echo "error: attach-pod failed for $ORDER_ID" >&2
+    echo "$OUTCOME" | head -5 >&2
+    exit 1 ;;
+esac
