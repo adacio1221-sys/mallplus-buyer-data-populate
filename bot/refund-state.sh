@@ -90,6 +90,28 @@ export default async function main({ container, args }: any) {
   const orderAdjustment = container.resolve('orderAdjustment') as any
   const orderReturn = container.resolve('order_return') as any
 
+  // ShortIdModuleService races under parallel writes (the algorithm reads
+  // MAX(short_id) and increments — two concurrent callers can compute the
+  // same next ID and one's INSERT fails on the unique constraint). Retry
+  // with jitter when we detect that specific failure. ~50/50 success at
+  // 8-way parallel without this; ~98%+ with 5 attempts.
+  async function withShortIdRetry<T>(fn: () => Promise<T>): Promise<T> {
+    let lastErr: any
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try { return await fn() } catch (err: any) {
+        lastErr = err
+        const msg = String(err?.message || err)
+        const stack = String(err?.stack || '')
+        const isCollision = /short[_ ]?id|duplicate key|unique constraint|already exists/i.test(msg)
+                            || /ShortIdModuleService/.test(stack)
+        if (!isCollision || attempt === 5) throw err
+        const delayMs = 50 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 50)
+        await new Promise(r => setTimeout(r, delayMs))
+      }
+    }
+    throw lastErr
+  }
+
   // Order context
   const { data: orders } = await query.graph({
     entity: 'order',
@@ -125,12 +147,12 @@ export default async function main({ container, args }: any) {
   // Default reason picked from src/modules/seller-store-order-tabs/buyer-return-reason-catalog.ts.
   const reasonLabel = 'Product is defective or does not work'
   const reasonStructured = { label: reasonLabel, leaf: reasonLabel }
-  const orderReturnRequest = await orderReturn.createOrderReturnRequests({
+  const orderReturnRequest = await withShortIdRetry(() => orderReturn.createOrderReturnRequests({
     customer_id: order.customer_id,
     customer_note: reasonLabel,
     status: 'pending',
     metadata: { buyer_return_reason: reasonStructured, source: 'refund-state.sh' }
-  })
+  }))
   const returnRequestId = orderReturnRequest.id
 
   // Workflow + reverse-logistics per mode (drives buyer statusTitle and
@@ -164,7 +186,7 @@ export default async function main({ container, args }: any) {
   }
   const nowIso = new Date()
 
-  const created = await afterSales.createOrderReturnRequestCases({
+  const created = await withShortIdRetry(() => afterSales.createOrderReturnRequestCases({
     order_return_request_id: returnRequestId,
     case_number: caseNumber,
     order_id: orderId,
@@ -182,9 +204,9 @@ export default async function main({ container, args }: any) {
     closed_reason_note: mode === 'failed' ? 'Refund attempt failed at payment provider' : null,
     cancelled_at: mode === 'cancelled' ? nowIso : null,
     metadata: { source: 'refund-state.sh', mode }
-  })
+  }))
 
-  await afterSales.createReverseLogisticsShipments({
+  await withShortIdRetry(() => afterSales.createReverseLogisticsShipments({
     context_type: 'return_request',
     order_id: orderId,
     seller_id: sellerId,
@@ -197,7 +219,7 @@ export default async function main({ container, args }: any) {
     tracking_url: `https://example.test/tracking/QA-${caseNumber}`,
     request_created_at: new Date(),
     raw_provider_payload: { source: 'refund-state.sh', mode }
-  })
+  }))
 
   // Flip order.metadata.has_return_or_refund so the seller portal's
   // /vendor/orders tab logic categorizes this order into the
@@ -214,7 +236,7 @@ export default async function main({ container, args }: any) {
 
   let adjustmentId: string | null = null
   if (mode === 'failed') {
-    const adj = await orderAdjustment.createOrderAdjustments({
+    const adj = await withShortIdRetry(() => orderAdjustment.createOrderAdjustments({
       order_id: orderId,
       seller_id: sellerId,
       adjustment_type: 'refund',
@@ -227,7 +249,7 @@ export default async function main({ container, args }: any) {
       adjustment_source: 'qa_bot',
       order_return_request_case_id: created.id,
       metadata: { source: 'refund-state.sh' }
-    })
+    }))
     adjustmentId = adj.id
   }
 
