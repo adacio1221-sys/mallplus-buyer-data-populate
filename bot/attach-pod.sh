@@ -116,25 +116,49 @@ export default async function main({ container, args }: any) {
 
   const fulfillmentModule: any = container.resolve(Modules.FULFILLMENT)
 
-  // Load existing metadata so we merge, not clobber, matching the webhook
-  // handler's pattern.
+  // Load existing metadata so we merge, not clobber. Mirrors the webhook
+  // handler's pattern: append a tracking event, attach POD, then write back.
   const existing = await fulfillmentModule.retrieveFulfillment(fulfillmentIds[0])
+  const existingMetadata = (existing?.metadata as any) || {}
+  const trackingEvents = Array.isArray(existingMetadata.tracking_events)
+    ? [...existingMetadata.tracking_events]
+    : []
+
+  const now = new Date()
+  trackingEvents.push({
+    timestamp: now.toISOString(),
+    description: 'Parcel delivered to recipient',
+    location: 'Manila'
+  })
+
   const newMetadata = {
-    ...((existing?.metadata as any) || {}),
+    ...existingMetadata,
+    tracking_events: trackingEvents,
     proof_of_delivery_url: podUrl,
     proof_of_delivery_recipient_name: recipient
   }
 
+  // Match the webhook handler's two writes: metadata update + delivered_at
+  // stamp. We intentionally SKIP orderModule.completeOrder() so order.status
+  // stays pending (user preference 2026-06-05: POD without completing).
   await fulfillmentModule.updateFulfillment(fulfillmentIds[0], {
     metadata: newMetadata
   })
+  const alreadyDelivered = !!existing?.delivered_at
+  if (!alreadyDelivered) {
+    await fulfillmentModule.updateFulfillment(fulfillmentIds[0], {
+      delivered_at: now
+    })
+  }
 
   console.log(JSON.stringify({
     ok: true,
     order_id: orderId,
     fulfillment_id: fulfillmentIds[0],
     proof_of_delivery_url: podUrl,
-    proof_of_delivery_recipient_name: recipient
+    proof_of_delivery_recipient_name: recipient,
+    delivered_at_stamped: !alreadyDelivered,
+    tracking_events_count: trackingEvents.length
   }))
 }
 TSEOF
