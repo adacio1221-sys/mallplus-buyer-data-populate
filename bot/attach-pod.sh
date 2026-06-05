@@ -20,7 +20,7 @@
 #   attach-pod.sh <order_id_or_sn> [env=prod] [--url=<photo_url>] [--recipient=<name>]
 #
 # Defaults:
-#   url       = https://via.placeholder.com/600x400.jpg?text=QA+POD
+#   url       = https://picsum.photos/seed/qapod/600/400.jpg
 #   recipient = "QA Recipient"
 #
 # Pre-flight: requires the order to have a fulfillment row (i.e. it's at
@@ -39,7 +39,7 @@ fi
 INPUT=$1
 shift
 ENV=prod
-POD_URL='https://via.placeholder.com/600x400.jpg?text=QA+POD'
+POD_URL='https://picsum.photos/seed/qapod/600/400.jpg'
 POD_RECIPIENT='QA Recipient'
 
 for arg in "$@"; do
