@@ -86,6 +86,23 @@ sql_run() {
 #   <order_sn> (date-ish + suffix) → resolve to order_id first, then case
 if [[ "$INPUT" =~ ^orrc_[A-Z0-9]+$ ]]; then
   CASE_ID=$INPUT
+elif [[ "$INPUT" =~ ^[A-Z0-9]{26}$ ]]; then
+  # Bare 26-char ULID — could be a case ID (refund-state.sh prints these unprefixed).
+  # Check if it exists as a case; if so use directly, else fall through to order path.
+  PROBE=$(sql_run "SELECT id FROM order_return_request_case WHERE id = '$INPUT' AND deleted_at IS NULL LIMIT 1" \
+    | /usr/bin/python3 -c "
+import json, sys
+try:
+    rows = json.load(sys.stdin).get('rows', [])
+    print(rows[0].get('id', '') if rows else '')
+except Exception:
+    print('')")
+  if [ -n "$PROBE" ]; then
+    CASE_ID=$INPUT
+  else
+    echo "error: '$INPUT' is not a known case ID; pass an order_id, order_sn, or orrc_… case ID instead" >&2
+    exit 1
+  fi
 else
   # If not a Medusa ULID, run it through resolve-order-id to convert order_sn.
   if [[ ! "$INPUT" =~ ^order_[A-Z0-9]+$ ]]; then
