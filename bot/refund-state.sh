@@ -184,25 +184,44 @@ export default async function main({ container, args }: any) {
   }
   const nowIso = new Date()
 
-  const created = await withShortIdRetry(() => afterSales.createOrderReturnRequestCases({
-    order_return_request_id: returnRequestId,
-    case_number: caseNumber,
+  // MP-CASE-LINKAGE: use upsertCaseForReturnRequest (not createOrderReturnRequestCases)
+  // so case.id === order_return_request_id. This matches the storefront's
+  // request-return shape and lets the admin RR list endpoint's lazy-upsert
+  // existing-case lookup actually find this row → the
+  // RMS_WORKFLOW_PRESERVE_WHEN_MERCUR_PENDING guard kicks in and keeps the
+  // workflow_state we set here instead of reverting to RETURN_REQUESTED on
+  // the next list-page render (the bug we hit 2026-06-04 with marj's cases).
+  const upserted = await withShortIdRetry(() => afterSales.upsertCaseForReturnRequest({
+    id: returnRequestId,
     order_id: orderId,
     customer_id: order.customer_id,
     seller_id: sellerId,
-    workflow_state: workflowState,
-    reverse_logistics_state: reverseLogisticsState,
     solution_type: 'refund',
-    request_origin: 'qa_bot',
-    requested_refund_amount: refundAmount,
-    approved_refund_amount: refundAmount,
-    currency_code: order.currency_code || 'PHP',
-    closed_at: mode === 'failed' ? nowIso : null,
-    closed_reason_code: mode === 'failed' ? 'refund_payment_failed' : null,
-    closed_reason_note: mode === 'failed' ? 'Refund attempt failed at payment provider' : null,
-    cancelled_at: mode === 'cancelled' ? nowIso : null,
-    metadata: { source: 'refund-state.sh', mode }
+    request_origin: 'storefront',  // matches the storefront's own request_origin
+    requested_refund_amount: Number(refundAmount),
+    workflow_state: workflowState,
+    reverse_logistics_state: reverseLogisticsState
   }))
+
+  // Patch fields the upsert doesn't accept (closed_*, cancelled_at,
+  // approved_refund_amount, final_refund_amount, metadata). updateOrderReturnRequestCases
+  // takes any case column directly.
+  const extraFields: any = {
+    approved_refund_amount: Number(refundAmount),
+    final_refund_amount: Number(refundAmount),
+    currency_code: order.currency_code || 'PHP',
+    metadata: { source: 'refund-state.sh', mode }
+  }
+  if (mode === 'failed') {
+    extraFields.closed_at = nowIso
+    extraFields.closed_reason_code = 'refund_payment_failed'
+    extraFields.closed_reason_note = 'Refund attempt failed at payment provider'
+  }
+  if (mode === 'cancelled') {
+    extraFields.cancelled_at = nowIso
+  }
+  await afterSales.updateOrderReturnRequestCases({ id: upserted.id, ...extraFields })
+  const created = upserted
 
   await withShortIdRetry(() => afterSales.createReverseLogisticsShipments({
     context_type: 'return_request',

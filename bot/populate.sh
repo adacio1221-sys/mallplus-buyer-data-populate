@@ -252,3 +252,18 @@ if [ -x /Users/daydream/buyer-data-populate/bot/propagate-address-metadata.sh ];
       || echo "warning: address metadata propagation failed for $oid (orders may need manual fix-address before arrange-pickup)" >&2
   done <<< "$ORDERS"
 fi
+
+# Post-create: swap the auto-fallback shipping option for the J&T Express
+# option (channel_code=JNT-EXP-FWD) when one exists for the same shipping
+# profile. The populator script picks shipping options by ULID-order,
+# which means it picks the oldest auto-created `manual-fulfillment`
+# fallback — that option has no channel_code so JT routing later fails
+# with B063. A real buyer would pick "J&T Express" from the storefront
+# picker. Best-effort: log + continue on failure (some sellers may not
+# have a JT option configured yet).
+if [ -x /Users/daydream/buyer-data-populate/bot/swap-shipping-jt.sh ]; then
+  while IFS= read -r oid; do
+    /Users/daydream/buyer-data-populate/bot/swap-shipping-jt.sh "$oid" "$ENV" >/dev/null 2>&1 \
+      || echo "warning: shipping-option swap failed for $oid (order may ship via manual-fulfillment fallback instead of JT)" >&2
+  done <<< "$ORDERS"
+fi
