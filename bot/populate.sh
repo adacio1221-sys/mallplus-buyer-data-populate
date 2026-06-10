@@ -155,3 +155,18 @@ fi
 while IFS= read -r oid; do
   echo "$oid $STATUS"
 done <<< "$ORDERS"
+
+# Post-create: propagate the customer's address metadata onto each
+# order_address so JT arrange-pickup sees `metadata.barangay` (the resolved
+# name string). Storefront-originated orders get this via the buyer-flow
+# fix; populate.sh-seeded orders bypass that path and end up with
+# metadata=null. Calling the helper here closes the gap.
+#
+# Best-effort: failures are logged to stderr but don't fail the populate.
+# All envs benefit (prod populate-seeded orders have the same gap).
+if [ -x /Users/daydream/buyer-data-populate/bot/propagate-address-metadata.sh ]; then
+  while IFS= read -r oid; do
+    /Users/daydream/buyer-data-populate/bot/propagate-address-metadata.sh "$oid" "$ENV" >/dev/null 2>&1 \
+      || echo "warning: address metadata propagation failed for $oid (orders may need manual fix-address before arrange-pickup)" >&2
+  done <<< "$ORDERS"
+fi
