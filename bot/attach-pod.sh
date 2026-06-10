@@ -74,11 +74,9 @@ RESOLVED=$(/Users/daydream/buyer-data-populate/bot/resolve-order-id.sh "$INPUT" 
   || { echo "$RESOLVED" >&2; exit 1; }
 ORDER_ID=$RESOLVED
 
-TOKEN=$(/usr/bin/curl -s -X POST "$API_BASE/auth/user/emailpass" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
-  | /usr/bin/python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))")
-[ -z "$TOKEN" ] && { echo "error: admin login failed" >&2; exit 1; }
+# Fetch admin token with primary + fallback handling (see bot/admin-token.sh).
+TOKEN=$(/Users/daydream/buyer-data-populate/bot/admin-token.sh "$ENV") \
+  || { echo "error: admin login failed for env=$ENV" >&2; exit 1; }
 
 # Build TS that merges proof_of_delivery_url + recipient into fulfillment.metadata
 # via the fulfillment module's updateFulfillment(). Mirrors the write path in

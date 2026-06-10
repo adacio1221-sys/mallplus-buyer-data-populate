@@ -60,15 +60,9 @@ case "$ENV" in
   *) echo "error: env must be 'stage' | 'dev' | 'prod'" >&2; exit 2 ;;
 esac
 
-# Admin login.
-TOKEN=$(/usr/bin/curl -s -X POST "$API_BASE/auth/user/emailpass" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
-  | /usr/bin/python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('token',''))")
-if [ -z "$TOKEN" ]; then
-  echo "error: admin login failed for $ADMIN_EMAIL on $API_BASE" >&2
-  exit 1
-fi
+# Fetch admin token with primary + fallback handling (see bot/admin-token.sh).
+TOKEN=$(/Users/daydream/buyer-data-populate/bot/admin-token.sh "$ENV") \
+  || { echo "error: admin login failed for env=$ENV" >&2; exit 1; }
 
 # Script-console auth (separate password gate).
 AUTHZ=$(/usr/bin/curl -s -X POST "$API_BASE/admin/script-console/auth" \
