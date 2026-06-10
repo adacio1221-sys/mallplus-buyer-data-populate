@@ -31,19 +31,27 @@ COUNT=$4
 ENV=${5:-stage}
 PRODUCT_ARG=${6:-}
 
+# Dispatch mode:
+#   ssh   — outer (and optional inner) SSH into the host, run `npx medusa exec` against /Data/sbin/medusa-api
+#   admin — POST to /admin/script-console/scripts/run with the compiled .js (used when the host's medusa source is gone, e.g. Dockerized stage)
+DISPATCH=ssh
+SSH_OUTER=""
+SSH_INNER=""
+BACKEND_DIR=/Data/sbin/medusa-api
+API_BASE=""
 case "$ENV" in
   stage|staging)
-    SSH_OUTER=arvind@43.98.207.70
-    SSH_INNER=""
-    BACKEND_DIR=/Data/sbin/medusa-api ;;
+    # Stage Docker'ized — host doesn't have /Data/sbin/medusa-api anymore. Route through script-console.
+    DISPATCH=admin
+    API_BASE=${MEDUSA_API_BASE_STAGE:-https://staging-api.mallplus.ph}
+    ADMIN_EMAIL=${MEDUSA_ADMIN_EMAIL_STAGE:-admin@medusa-test.com}
+    ADMIN_PASSWORD=${MEDUSA_ADMIN_PASSWORD_STAGE:-supersecret}
+    SC_PASSWORD=${MEDUSA_SCRIPT_CONSOLE_PASSWORD_STAGE:-123} ;;
   dev|development)
-    SSH_OUTER=arvind@43.98.253.168
-    SSH_INNER=""
-    BACKEND_DIR=/Data/sbin/medusa-api ;;
+    SSH_OUTER=arvind@43.98.253.168 ;;
   prod|production)
     SSH_OUTER=arvind@47.84.101.211
-    SSH_INNER=arvind@10.0.0.9
-    BACKEND_DIR=/Data/sbin/medusa-api ;;
+    SSH_INNER=arvind@10.0.0.9 ;;
   *) echo "error: env must be 'stage' | 'dev' | 'prod' (got '$ENV')" >&2; exit 2 ;;
 esac
 
@@ -73,11 +81,60 @@ ssh_run() {
   fi
 }
 
-# Resolve seller handle to ID if needed. The .env's DATABASE_URL is parsed
-# in-shell so the same code path works for localhost (stage/dev) and RDS
-# (prod).
+# admin-side helpers (only used when DISPATCH=admin)
+admin_token() {
+  /usr/bin/curl -s -X POST "$API_BASE/auth/user/emailpass" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+    | /usr/bin/python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))"
+}
+admin_sql() {
+  local token=$1 query=$2
+  local body
+  body=$(/usr/bin/python3 -c "import json,sys; print(json.dumps({'query': sys.argv[1]}))" "$query")
+  /usr/bin/curl -s -X POST "$API_BASE/admin/script-console/sql/run" \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $token" \
+    -H "x-script-console-password: $SC_PASSWORD" \
+    -d "$body"
+}
+admin_run_script() {
+  local token=$1 script=$2 args_json=$3
+  local body
+  body=$(/usr/bin/python3 -c "
+import json, sys
+print(json.dumps({'script': sys.argv[1], 'args': json.loads(sys.argv[2])}))
+" "$script" "$args_json")
+  /usr/bin/curl -s -X POST "$API_BASE/admin/script-console/scripts/run" \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $token" \
+    -H "x-script-console-password: $SC_PASSWORD" \
+    -d "$body"
+}
+
+# Resolve seller handle to ID if needed. For SSH dispatch (dev/prod) we
+# parse DATABASE_URL on the target host and psql directly. For admin
+# dispatch (stage), we hit the script-console SQL endpoint.
 if [[ "$SELLER" == sel_* ]]; then
   SELLER_ID=$SELLER
+elif [ "$DISPATCH" = "admin" ]; then
+  ADMIN_TOKEN=$(admin_token)
+  if [ -z "$ADMIN_TOKEN" ]; then
+    echo "error: admin login failed for $ENV ($ADMIN_EMAIL @ $API_BASE)" >&2
+    exit 1
+  fi
+  SELLER_ID=$(admin_sql "$ADMIN_TOKEN" "SELECT id FROM seller WHERE handle = '$SELLER' AND deleted_at IS NULL LIMIT 1" \
+    | /usr/bin/python3 -c "
+import json, sys
+try:
+    rows = json.load(sys.stdin).get('rows', [])
+    print(rows[0].get('id', '') if rows else '')
+except Exception:
+    print('')")
+  if [ -z "$SELLER_ID" ]; then
+    echo "error: seller lookup failed for handle '$SELLER' on $ENV (no row in seller table)" >&2
+    exit 1
+  fi
 else
   SELLER_LOOKUP="
 PASS=\$(grep ^DATABASE_URL $BACKEND_DIR/.env | sed -E 's|.*://[^:]+:([^@]+)@.*|\\1|')
@@ -122,12 +179,37 @@ if [ -n "$PRODUCT_ARG" ]; then
   esac
 fi
 
-# Run the Medusa populator. `|| true` keeps `set -e` from killing the
-# script when the Medusa CLI exits non-zero (which it does on script
-# throw + rollback) — we still have the full output in RESULT and run
-# our own failure-marker detection below.
-INNER_CMD="cd $BACKEND_DIR && npx medusa exec src/scripts/orders/create-order-by-status.ts CUSTOMER_EMAIL=$EMAIL CUSTOMER_PASSWORD=$CUSTOMER_PASSWORD SELLER_ID=$SELLER_ID SEED_ORDER_COUNT=$COUNT SEED_ORDER_STATUS=$STATUS $EXTRA_ARGS 2>&1"
-RESULT=$(ssh_run "$INNER_CMD" || true)
+# Run the Medusa populator. For SSH dispatch we use the .ts source; for
+# admin dispatch we point at the compiled .js (the only thing inside the
+# Docker image's published path).
+#
+# `|| true` keeps `set -e` from killing the script when the Medusa CLI
+# exits non-zero (which it does on script throw + rollback) — we still
+# have the full output in RESULT and run our own failure-marker detection
+# below.
+if [ "$DISPATCH" = "admin" ]; then
+  # Build the args array (each arg is a "KEY=VALUE" string).
+  ARGS_PY=$(/usr/bin/python3 -c "
+import json
+args = ['CUSTOMER_EMAIL=$EMAIL','CUSTOMER_PASSWORD=$CUSTOMER_PASSWORD','SELLER_ID=$SELLER_ID','SEED_ORDER_COUNT=$COUNT','SEED_ORDER_STATUS=$STATUS']
+extra = '$EXTRA_ARGS'.strip()
+if extra:
+  args.append(extra)
+print(json.dumps(args))")
+  [ -z "${ADMIN_TOKEN:-}" ] && ADMIN_TOKEN=$(admin_token)
+  RAW=$(admin_run_script "$ADMIN_TOKEN" "orders/create-order-by-status.js" "$ARGS_PY")
+  RESULT=$(echo "$RAW" | /usr/bin/python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get('stdout','') + d.get('stderr',''))
+except Exception:
+    print(sys.stdin.read())
+")
+else
+  INNER_CMD="cd $BACKEND_DIR && npx medusa exec src/scripts/orders/create-order-by-status.ts CUSTOMER_EMAIL=$EMAIL CUSTOMER_PASSWORD=$CUSTOMER_PASSWORD SELLER_ID=$SELLER_ID SEED_ORDER_COUNT=$COUNT SEED_ORDER_STATUS=$STATUS $EXTRA_ARGS 2>&1"
+  RESULT=$(ssh_run "$INNER_CMD" || true)
+fi
 
 # Check for failure markers FIRST so we don't print order IDs from
 # orders that the script subsequently rolled back. We use explicit
