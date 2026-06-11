@@ -183,56 +183,59 @@ export default async function main({ container, args }: any) {
     handlerErr = e
   }
 
-  // The handler's jtService.updateJTShipments call doesn't commit in
-  // script-console's TS context (transaction quirk — parallel
-  // fulfillmentModule.updateFulfillment calls DO persist, which is why
-  // tracking_events land). Force the jt_shipment row update via raw SQL
-  // so the visible state lands. The handler still runs all its other
-  // side effects (tracking_events append, downstream order events,
-  // fulfillment.delivered_at on DELIVERED) before this.
-  const knex = container.resolve(ContainerRegistrationKeys.PG_CONNECTION) as any
-  const updates: any = {
-    jt_status_code: 'QA',
-    jt_status_desc: description,
-    updated_at: new Date()
+  // Service-quirk: the handler invokes jtService.updateJTShipments({id}, data)
+  // (two-arg form) which does NOT commit in script-console's TS execution
+  // context. The auto-generated MedusaService method only persists when
+  // called with the single-arg merge form: updateJTShipments({id, ...data}).
+  // Replay the same updates the handler intended, via the proper service.
+  // (No raw SQL — goes through MedusaService just like every other module
+  // call in the bot.)
+  const jtSvc: any = container.resolve('threePLJT')
+  const shipments: any[] = await jtSvc.listJTShipments({ bill_code: billCode })
+  if (shipments && shipments[0]) {
+    const updates: any = {
+      id: shipments[0].id,
+      jt_status_code: 'QA',
+      jt_status_desc: description
+    }
+    switch (eventType) {
+      case 'shipment.picked_up':
+        updates.status = 'in_transit'
+        updates.picked_up_at = nowIso
+        updates.logistics_status = 'LOGISTICS_PICKUP_DONE'
+        break
+      case 'shipment.in_transit':
+        updates.status = 'in_transit'
+        break
+      case 'shipment.departure':
+        updates.status = 'in_transit'
+        updates.logistics_status = 'LOGISTICS_DEPARTURE'
+        break
+      case 'shipment.arrival':
+        updates.status = 'in_transit'
+        updates.logistics_status = 'LOGISTICS_ARRIVAL'
+        break
+      case 'shipment.out_for_delivery':
+        updates.status = 'in_transit'
+        updates.logistics_status = 'LOGISTICS_OUT_FOR_DELIVERY'
+        break
+      case 'shipment.delivered':
+        updates.status = 'delivered'
+        updates.delivered_at = nowIso
+        updates.logistics_status = 'LOGISTICS_DELIVERY_DONE'
+        break
+      case 'shipment.failed_delivery':
+        updates.status = 'failed'
+        updates.failed_at = nowIso
+        updates.logistics_status = 'LOGISTICS_DELIVERY_FAILED'
+        break
+      case 'shipment.returned':
+        updates.status = 'returned'
+        updates.logistics_status = 'LOGISTICS_RETURNED'
+        break
+    }
+    await jtSvc.updateJTShipments(updates)
   }
-  switch (eventType) {
-    case 'shipment.picked_up':
-      updates.status = 'in_transit'
-      updates.picked_up_at = nowIso
-      updates.logistics_status = 'LOGISTICS_PICKUP_DONE'
-      break
-    case 'shipment.in_transit':
-      updates.status = 'in_transit'
-      break
-    case 'shipment.departure':
-      updates.status = 'in_transit'
-      updates.logistics_status = 'LOGISTICS_DEPARTURE'
-      break
-    case 'shipment.arrival':
-      updates.status = 'in_transit'
-      updates.logistics_status = 'LOGISTICS_ARRIVAL'
-      break
-    case 'shipment.out_for_delivery':
-      updates.status = 'in_transit'
-      updates.logistics_status = 'LOGISTICS_OUT_FOR_DELIVERY'
-      break
-    case 'shipment.delivered':
-      updates.status = 'delivered'
-      updates.delivered_at = nowIso
-      updates.logistics_status = 'LOGISTICS_DELIVERY_DONE'
-      break
-    case 'shipment.failed_delivery':
-      updates.status = 'failed'
-      updates.failed_at = nowIso
-      updates.logistics_status = 'LOGISTICS_DELIVERY_FAILED'
-      break
-    case 'shipment.returned':
-      updates.status = 'returned'
-      updates.logistics_status = 'LOGISTICS_RETURNED'
-      break
-  }
-  await knex('jt_shipment').where({ bill_code: billCode, deleted_at: null }).update(updates)
 
   console.log(JSON.stringify({ ok: !handlerErr, order_id: orderId, bill_code: billCode, event_type: eventType, sql_applied: true, err: handlerErr ? String(handlerErr?.stack || handlerErr) : null }))
 }
